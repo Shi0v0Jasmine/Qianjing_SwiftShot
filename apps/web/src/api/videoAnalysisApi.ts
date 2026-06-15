@@ -201,14 +201,18 @@ export const assembleVideoAnalysisFinalVideo = async (
 };
 
 export const generateVideoAnalysisImageCandidates = async ({
+  allowFallback = true,
   canvasSessionId,
   count,
+  missingNodeId,
   prompt,
   referenceVideoUris,
   slotId
 }: {
+  allowFallback?: boolean;
   canvasSessionId?: string;
   count: number;
+  missingNodeId?: string;
   prompt: string;
   referenceVideoUris?: string[];
   slotId: string;
@@ -227,38 +231,47 @@ export const generateVideoAnalysisImageCandidates = async ({
   if (canvasSessionId) {
     return generateV2CanvasImageCandidates(canvasSessionId, {
       slot_id: slotId,
+      missing_node_id: missingNodeId,
       prompt,
       count,
-      allow_fallback: true
+      allow_fallback: allowFallback
     });
   }
 
   return generateV2ImageCandidates({
     prompt,
     count,
-    allow_fallback: true,
+    allow_fallback: allowFallback,
     reference_video_uris: referenceVideoUris ?? []
   });
 };
 
 export const generateVideoAnalysisGapVideo = async ({
+  allowFallback = true,
   approvedImageUri,
+  autoTrimReview,
   canvasSessionId,
   durationSeconds,
+  missingNodeId,
   sourceVideoUri,
   slotDescription,
   slotId,
   slotType,
-  videoPrompt
+  videoPrompt,
+  waitForCompletion
 }: {
+  allowFallback?: boolean;
   approvedImageUri?: string;
+  autoTrimReview?: boolean;
   canvasSessionId?: string;
   durationSeconds: number;
+  missingNodeId?: string;
   sourceVideoUri?: string;
   slotDescription: string;
   slotId: string;
   slotType: string;
   videoPrompt: string;
+  waitForCompletion?: boolean;
 }): Promise<unknown> => {
   if (USE_MOCK) {
     await wait(860);
@@ -287,10 +300,14 @@ export const generateVideoAnalysisGapVideo = async ({
   if (canvasSessionId) {
     return generateV2CanvasGapVideo(canvasSessionId, {
       approved_image_uri: approvedImageUri,
+      auto_trim_review: autoTrimReview,
       duration_seconds: durationSeconds,
+      missing_node_id: missingNodeId,
+      source_video_uri: sourceVideoUri,
       slot_id: slotId,
       video_prompt: videoPrompt,
-      allow_fallback: true
+      wait_for_completion: waitForCompletion,
+      allow_fallback: allowFallback
     });
   }
 
@@ -303,6 +320,6 @@ export const generateVideoAnalysisGapVideo = async ({
     slot_id: slotId,
     slot_type: slotType,
     slot_description: slotDescription,
-    allow_fallback: true
+    allow_fallback: allowFallback
   });
 };

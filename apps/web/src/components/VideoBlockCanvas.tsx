@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  generateV2CanvasGapVideo,
-  generateV2CanvasImageCandidates
-} from "../api/client";
+  generateVideoAnalysisGapVideo,
+  generateVideoAnalysisImageCandidates
+} from "../api/videoAnalysisApi";
 import type { V2CanvasNode, V2CanvasSession } from "../api/client";
 import type { CanvasBlock, V2MaterialAssignment, V2MaterialCoverageSlot } from "../types";
 
@@ -25,6 +25,12 @@ type CanvasPosition = {
   y: number;
 };
 
+type CanvasCamera = {
+  x: number;
+  y: number;
+  zoom: number;
+};
+
 type CanvasStatus = "matched" | "missing" | "duration_insufficient" | "generating";
 
 type VideoGenerationPayload = {
@@ -33,16 +39,19 @@ type VideoGenerationPayload = {
   video_prompt: string;
 };
 
-const BASE_CANVAS_WIDTH = 2360;
-const BASE_CANVAS_HEIGHT = 980;
 const CANVAS_CARD_WIDTH = 288;
 const CANVAS_CARD_HEIGHT = 244;
-const CANVAS_RIGHT_SAFE_PADDING = 920;
-const CANVAS_BOTTOM_SAFE_PADDING = 420;
+const CANVAS_WORLD_PADDING_X = 720;
+const CANVAS_WORLD_PADDING_Y = 420;
 const MIN_ZOOM = 25;
 const MAX_ZOOM = 200;
 const ZOOM_STEP = 10;
 const DRAG_THRESHOLD = 4;
+const DEFAULT_CAMERA: CanvasCamera = {
+  x: 0,
+  y: 0,
+  zoom: 100
+};
 
 const cardImages = [
   "https://www.figma.com/api/mcp/asset/7a9bb822-f69c-4344-9da9-27ec440b9d2e",
@@ -178,6 +187,35 @@ const portColorByStatus: Record<CanvasStatus, "matched" | "missing"> = {
 };
 
 const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+
+const getWorldBounds = (positions: CanvasPosition[]) => {
+  if (!positions.length) {
+    return {
+      height: 1,
+      left: -CANVAS_WORLD_PADDING_X,
+      top: -CANVAS_WORLD_PADDING_Y,
+      width: 1
+    };
+  }
+
+  const minX = positions.reduce((left, position) => Math.min(left, position.x), positions[0].x);
+  const minY = positions.reduce((top, position) => Math.min(top, position.y), positions[0].y);
+  const maxX = positions.reduce(
+    (right, position) => Math.max(right, position.x + CANVAS_CARD_WIDTH),
+    positions[0].x + CANVAS_CARD_WIDTH
+  );
+  const maxY = positions.reduce(
+    (bottom, position) => Math.max(bottom, position.y + CANVAS_CARD_HEIGHT),
+    positions[0].y + CANVAS_CARD_HEIGHT
+  );
+
+  return {
+    height: Math.max(1, maxY - minY + CANVAS_WORLD_PADDING_Y * 2),
+    left: minX - CANVAS_WORLD_PADDING_X,
+    top: minY - CANVAS_WORLD_PADDING_Y,
+    width: Math.max(1, maxX - minX + CANVAS_WORLD_PADDING_X * 2)
+  };
+};
 
 const defaultKeyframePromptFor = (block: CanvasBlock, index: number) =>
   `请生成一幅画面，展示${labelForBlock(
@@ -593,7 +631,7 @@ export const VideoBlockCanvas = ({
   const [positions, setPositions] = useState<Record<string, CanvasPosition>>(basePositions);
   const [isDragging, setIsDragging] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const [zoom, setZoom] = useState(100);
+  const [camera, setCamera] = useState<CanvasCamera>(DEFAULT_CAMERA);
   const [zoomDraft, setZoomDraft] = useState("100");
   const [showHelp, setShowHelp] = useState(false);
   const [activeEditorBlockId, setActiveEditorBlockId] = useState<string | null>(null);
@@ -609,27 +647,16 @@ export const VideoBlockCanvas = ({
   const [generatedVideoThumbs, setGeneratedVideoThumbs] = useState<Record<string, string>>({});
   const [generatedVideoUris, setGeneratedVideoUris] = useState<Record<string, string>>({});
   const [selectedCanvasBlockId, setSelectedCanvasBlockId] = useState<string | null>(null);
+  const zoom = camera.zoom;
   const blockOrderKey = useMemo(() => displayBlocks.map((block) => block.id).join("|"), [displayBlocks]);
   const canvasBounds = useMemo(() => {
     const activePositions = displayBlocks
       .map((block) => positions[block.id] ?? basePositions[block.id])
       .filter((position): position is CanvasPosition => Boolean(position));
-    const maxRight = activePositions.reduce(
-      (right, position) => Math.max(right, position.x + CANVAS_CARD_WIDTH),
-      0
-    );
-    const maxBottom = activePositions.reduce(
-      (bottom, position) => Math.max(bottom, position.y + CANVAS_CARD_HEIGHT),
-      0
-    );
-
-    return {
-      width: Math.max(BASE_CANVAS_WIDTH, maxRight + CANVAS_RIGHT_SAFE_PADDING),
-      height: Math.max(BASE_CANVAS_HEIGHT, maxBottom + CANVAS_BOTTOM_SAFE_PADDING)
-    };
+    return getWorldBounds(activePositions);
   }, [basePositions, displayBlocks, positions]);
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     blockId: string;
     didMove: boolean;
@@ -642,14 +669,39 @@ export const VideoBlockCanvas = ({
   const panRef = useRef<{
     startX: number;
     startY: number;
-    scrollLeft: number;
-    scrollTop: number;
+    cameraX: number;
+    cameraY: number;
   } | null>(null);
 
+  const centerCameraOnPositions = (
+    nextPositions: Record<string, CanvasPosition>,
+    nextZoom = 100
+  ) => {
+    const viewport = viewportRef.current;
+    const scale = nextZoom / 100;
+    const activePositions = displayBlocks
+      .map((block) => nextPositions[block.id])
+      .filter((position): position is CanvasPosition => Boolean(position));
+    const bounds = getWorldBounds(activePositions);
+    const contentCenterX = bounds.left + bounds.width / 2;
+    const contentCenterY = bounds.top + bounds.height / 2;
+    const viewportWidth = viewport?.clientWidth ?? window.innerWidth;
+    const viewportHeight = viewport?.clientHeight ?? Math.max(window.innerHeight - 92, 1);
+
+    setCamera({
+      x: viewportWidth / 2 - contentCenterX * scale,
+      y: viewportHeight / 2 - contentCenterY * scale,
+      zoom: nextZoom
+    });
+    setZoomDraft(String(nextZoom));
+  };
+
   useEffect(() => {
-    setPositions(fallbackPositions(displayBlocks));
+    const nextPositions = fallbackPositions(displayBlocks);
+    setPositions(nextPositions);
     setActiveEditorBlockId(null);
     onSelectBlock("");
+    window.requestAnimationFrame(() => centerCameraOnPositions(nextPositions, 100));
   }, [blockOrderKey]);
 
   const selectedBlock =
@@ -727,33 +779,32 @@ export const VideoBlockCanvas = ({
       clientY: number;
     }
   ) => {
-    const container = scrollRef.current;
+    const viewport = viewportRef.current;
     const next = clampZoom(Math.round(nextZoom));
-    const previousScale = zoom / 100;
-    const nextScale = next / 100;
-
-    let anchorCanvasX: number | null = null;
-    let anchorCanvasY: number | null = null;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (container && anchor) {
-      const rect = container.getBoundingClientRect();
-      offsetX = anchor.clientX - rect.left;
-      offsetY = anchor.clientY - rect.top;
-      anchorCanvasX = (container.scrollLeft + offsetX) / previousScale;
-      anchorCanvasY = (container.scrollTop + offsetY) / previousScale;
-    }
-
-    setZoom(next);
     setZoomDraft(String(next));
 
-    if (container && anchorCanvasX !== null && anchorCanvasY !== null) {
-      window.requestAnimationFrame(() => {
-        container.scrollLeft = anchorCanvasX * nextScale - offsetX;
-        container.scrollTop = anchorCanvasY * nextScale - offsetY;
-      });
-    }
+    setCamera((current) => {
+      if (!viewport) {
+        return {
+          ...current,
+          zoom: next
+        };
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      const offsetX = anchor ? anchor.clientX - rect.left : viewport.clientWidth / 2;
+      const offsetY = anchor ? anchor.clientY - rect.top : viewport.clientHeight / 2;
+      const currentScale = current.zoom / 100;
+      const nextScale = next / 100;
+      const worldX = (offsetX - current.x) / currentScale;
+      const worldY = (offsetY - current.y) / currentScale;
+
+      return {
+        x: offsetX - worldX * nextScale,
+        y: offsetY - worldY * nextScale,
+        zoom: next
+      };
+    });
   };
 
   const commitZoomDraft = () => {
@@ -767,7 +818,7 @@ export const VideoBlockCanvas = ({
 
   const resetViewport = () => {
     setPositions(basePositions);
-    applyZoom(100);
+    centerCameraOnPositions(basePositions, 100);
   };
 
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -795,30 +846,28 @@ export const VideoBlockCanvas = ({
 
     setActiveEditorBlockId(null);
     onSelectBlock("");
-    const container = scrollRef.current;
-    if (!container) {
-      return;
-    }
-
     panRef.current = {
       startX: event.clientX,
       startY: event.clientY,
-      scrollLeft: container.scrollLeft,
-      scrollTop: container.scrollTop
+      cameraX: camera.x,
+      cameraY: camera.y
     };
     setIsPanning(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handleCanvasPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!panRef.current || !scrollRef.current) {
+    if (!panRef.current) {
       return;
     }
 
-    scrollRef.current.scrollLeft =
-      panRef.current.scrollLeft - (event.clientX - panRef.current.startX);
-    scrollRef.current.scrollTop =
-      panRef.current.scrollTop - (event.clientY - panRef.current.startY);
+    const deltaX = event.clientX - panRef.current.startX;
+    const deltaY = event.clientY - panRef.current.startY;
+    setCamera((current) => ({
+      ...current,
+      x: panRef.current ? panRef.current.cameraX + deltaX : current.x,
+      y: panRef.current ? panRef.current.cameraY + deltaY : current.y
+    }));
   };
 
   const handleCanvasPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -875,8 +924,8 @@ export const VideoBlockCanvas = ({
       setIsDragging(true);
     }
 
-    const nextX = Math.max(24, startLeft + deltaX / scale);
-    const nextY = Math.max(130, startTop + deltaY / scale);
+    const nextX = startLeft + deltaX / scale;
+    const nextY = startTop + deltaY / scale;
 
     setPositions((current) => ({
       ...current,
@@ -936,16 +985,13 @@ export const VideoBlockCanvas = ({
       const prompt =
         block.v2?.coverageSlot?.recommended_aigc_prompt?.prompt ??
         getKeyframePrompt(block, blockIndex);
-      if (!canvasSessionId) {
-        throw new Error("V2 canvas session is required for image generation.");
-      }
-
-      const response: unknown = await generateV2CanvasImageCandidates(canvasSessionId, {
-        slot_id: getBackendSlotId(block),
-        missing_node_id: getMissingNodeId(block),
+      const response: unknown = await generateVideoAnalysisImageCandidates({
+        canvasSessionId,
+        slotId: getBackendSlotId(block),
+        missingNodeId: getMissingNodeId(block),
         prompt,
         count: 4,
-        allow_fallback: false
+        allowFallback: false
       });
       if (hasCanvasSession(response)) {
         onCanvasSessionChange?.(response.canvas_session);
@@ -1015,20 +1061,19 @@ export const VideoBlockCanvas = ({
         block.v2?.coverageSlot?.ai_completion_required_duration ??
         block.v2?.coverageSlot?.required_duration ??
         5;
-      if (!canvasSessionId) {
-        throw new Error("V2 canvas session is required for video generation.");
-      }
-
-      const response: unknown = await generateV2CanvasGapVideo(canvasSessionId, {
-        approved_image_uri: payload.keyframe_image,
-        source_video_uri: payload.source_video_uri,
-        duration_seconds: durationSeconds,
-        slot_id: getBackendSlotId(block),
-        missing_node_id: getMissingNodeId(block),
-        video_prompt: payload.video_prompt,
-        auto_trim_review: true,
-        wait_for_completion: true,
-        allow_fallback: false
+      const response: unknown = await generateVideoAnalysisGapVideo({
+        approvedImageUri: payload.keyframe_image,
+        autoTrimReview: true,
+        allowFallback: false,
+        canvasSessionId,
+        durationSeconds,
+        missingNodeId: getMissingNodeId(block),
+        sourceVideoUri: payload.source_video_uri,
+        slotDescription: block.timeline?.visual_description ?? block.materialSummary ?? labelForBlock(block, index),
+        slotId: getBackendSlotId(block),
+        slotType: block.slot.slot_type,
+        videoPrompt: payload.video_prompt,
+        waitForCompletion: true
       });
       if (hasCanvasSession(response)) {
         onCanvasSessionChange?.(response.canvas_session);
@@ -1138,25 +1183,26 @@ export const VideoBlockCanvas = ({
         onPointerCancel={handleCanvasPointerUp}
         onPointerUp={handleCanvasPointerUp}
         onWheel={handleWheel}
-        ref={scrollRef}
+        ref={viewportRef}
       >
         <div
-          className="figma-canvas-scale-shell"
+          className="figma-canvas-stage"
           style={{
-            height: canvasBounds.height * (zoom / 100),
-            width: canvasBounds.width * (zoom / 100)
+            transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${zoom / 100})`
           }}
         >
-          <div
-            className="figma-canvas-stage"
-            style={{
-              height: canvasBounds.height,
-              transform: `scale(${zoom / 100})`,
-              width: canvasBounds.width
-            }}
-          >
             {!isDragging ? (
-              <svg className="figma-canvas-lines" aria-hidden="true">
+              <svg
+                className="figma-canvas-lines"
+                aria-hidden="true"
+                style={{
+                  height: canvasBounds.height,
+                  left: canvasBounds.left,
+                  top: canvasBounds.top,
+                  width: canvasBounds.width
+                }}
+                viewBox={`${canvasBounds.left} ${canvasBounds.top} ${canvasBounds.width} ${canvasBounds.height}`}
+              >
                 {displayBlocks.slice(0, -1).map((block, index) => {
                   const nextBlock = displayBlocks[index + 1];
                   const from = positions[block.id] ?? basePositions[block.id];
@@ -1323,9 +1369,7 @@ export const VideoBlockCanvas = ({
               <aside
                 className="figma-gap-editor"
                 style={{
-                  transform: `translate(${Math.max(24, editorPosition.x - 225)}px, ${
-                    editorPosition.y + 261
-                  }px)`
+                  transform: `translate(${editorPosition.x - 225}px, ${editorPosition.y + 261}px)`
                 }}
               >
                 <div className="figma-gap-editor-body">
@@ -1418,7 +1462,6 @@ export const VideoBlockCanvas = ({
                 </div>
               </aside>
             ) : null}
-          </div>
         </div>
       </div>
 

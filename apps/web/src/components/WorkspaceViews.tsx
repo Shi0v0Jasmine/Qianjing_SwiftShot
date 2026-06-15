@@ -17,6 +17,7 @@ import {
   revalidateVideoAnalysisCanvas,
   runVideoAnalysisWorkflow
 } from "../api/videoAnalysisApi";
+import { USE_MOCK } from "../config";
 import type {
   V2CanvasSession,
   V2ScriptSession
@@ -559,7 +560,7 @@ const InputView = ({
       return;
     }
 
-    if (sampleFiles.length === 0) {
+    if (!USE_MOCK && sampleFiles.length === 0) {
       setPipelineStatus("error");
       setPipelineError("请先上传至少一个样例视频。");
       return;

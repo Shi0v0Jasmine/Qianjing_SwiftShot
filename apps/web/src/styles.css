@@ -2446,8 +2446,9 @@ input {
 .figma-canvas-scroll {
   position: absolute;
   inset: 92px 0 0;
-  overflow: auto;
+  overflow: hidden;
   cursor: grab;
+  touch-action: none;
 }
 
 .figma-canvas-scroll.is-panning {
@@ -2460,11 +2461,13 @@ input {
 }
 
 .figma-canvas-stage {
-  position: relative;
-  min-width: 2360px;
-  height: calc(100vh - 92px);
-  min-height: 980px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 .figma-canvas-tools {
@@ -2518,10 +2521,8 @@ input {
 
 .figma-canvas-lines {
   position: absolute;
-  inset: 0;
   z-index: 1;
-  width: 2360px;
-  height: 980px;
+  overflow: visible;
   pointer-events: none;
 }
 
