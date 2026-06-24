@@ -759,16 +759,16 @@ const ArrowUpIcon = () => (
 );
 
 const homeCanvasPlaceholderImages = [
-  "https://www.figma.com/api/mcp/asset/1a99447e-d01c-4566-820d-5c1265890eaa",
-  "https://www.figma.com/api/mcp/asset/4651d5ff-b7fa-40bf-a7e2-bbabaa707218",
-  "https://www.figma.com/api/mcp/asset/44e8c1d6-40ab-40da-98c2-6a94cc3b0d06"
+  "/mock-assets/home-canvas-1.png",
+  "/mock-assets/home-canvas-2.png",
+  "/mock-assets/home-canvas-3.png"
 ];
 
 const figmaSampleImages = [
-  "https://www.figma.com/api/mcp/asset/539affc8-2d0c-423d-a2cd-d4c5dd4afa48",
-  "https://www.figma.com/api/mcp/asset/7876cb39-6467-4237-90f3-50df9e43f22f",
-  "https://www.figma.com/api/mcp/asset/cc685639-818d-4944-ae66-4da8004e89a4",
-  "https://www.figma.com/api/mcp/asset/18570412-5901-487f-a65f-76a94db932de"
+  "/mock-assets/laptop-thumb.png",
+  "/mock-assets/product-detail.png",
+  "/mock-assets/person-drinking.png",
+  "/mock-assets/coffee-preview.png"
 ];
 
 type SampleAnalysisRow = {
@@ -1752,11 +1752,11 @@ type PreviewSegment = {
 };
 
 const previewImages = [
-  "https://www.figma.com/api/mcp/asset/7a9bb822-f69c-4344-9da9-27ec440b9d2e",
-  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1400&q=85",
-  "https://www.figma.com/api/mcp/asset/45d15bc2-c541-433f-9c4c-2a1db76e627d",
-  "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1400&q=85",
-  "https://www.figma.com/api/mcp/asset/27f882c5-4b54-4e3e-b9b7-811c7dfe6429"
+  "/mock-assets/coffee-preview.png",
+  "/mock-assets/laptop-thumb.png",
+  "/mock-assets/product-detail.png",
+  "/mock-assets/person-drinking.png",
+  "/mock-assets/coffee-cover.png"
 ];
 
 const parseRangeDuration = (value: string) => {

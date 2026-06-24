@@ -1379,7 +1379,7 @@ input {
   height: 40px;
   margin-right: 0;
   border-radius: 9999px;
-  background-image: url("https://www.figma.com/api/mcp/asset/b3297bd1-193b-4e59-bb5b-ca96cb902dcd");
+  background-image: url("/mock-assets/avatar.svg");
   background-position: center;
   background-size: cover;
 }
@@ -5103,7 +5103,7 @@ input {
 }
 
 .input-page-redesign .canvas-card img {
-  height: 330px;
+  height: 254px;
   border-radius: 8px;
   opacity: 1;
 }
@@ -5274,14 +5274,12 @@ body,
   content: "\6DFB\52A0\4F60\7684\7D20\6750";
 }
 
-.home-brand-button,
 .figma-brand-home,
 .figma-canvas-brand span,
 .preview-brand span {
   font-size: 0;
 }
 
-.home-brand-button::before,
 .figma-brand-home::before,
 .figma-canvas-brand span::before,
 .preview-brand span::before {
@@ -5289,7 +5287,6 @@ body,
   font-size: 36px;
   line-height: 1.5;
 }
-
 .figma-avatar,
 .figma-analysis-avatar {
   position: relative;
@@ -5783,6 +5780,281 @@ body,
 
 .figma-port.bottom {
   display: none;
+}
+
+/* Shared navigation polish for the dev demo pages. */
+.simple-top-bar,
+.figma-analysis-topbar,
+.figma-canvas-topbar,
+.preview-topbar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100vw, 1728px);
+  height: 106px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+.simple-top-bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 20;
+  background: #0a0a0a;
+  transform: translateX(-50%);
+}
+
+.workspace.page-input .simple-top-bar {
+  height: 106px;
+  padding: 0 48px;
+}
+
+.figma-analysis-topbar,
+.figma-canvas-topbar,
+.preview-topbar {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+}
+
+.figma-canvas-topbar,
+.preview-topbar {
+  z-index: 8;
+}
+
+.figma-analysis-brand,
+.figma-canvas-brand,
+.preview-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+}
+
+.home-brand-button,
+.figma-brand-home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fe2c55;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.home-brand-button,
+.figma-analysis-brand > span,
+.figma-brand-home::before,
+.figma-canvas-brand span::before,
+.preview-brand span::before {
+  color: #fe2c55;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.figma-analysis-brand strong,
+.figma-canvas-brand strong,
+.preview-brand strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figma-canvas-brand i,
+.preview-brand i {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.figma-avatar,
+.figma-analysis-avatar {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  align-self: center;
+}
+
+.figma-migration-button,
+.migration-nav-button,
+.preview-back-button,
+.preview-cover-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 140px;
+  height: 48px;
+  padding: 0 18px 2px;
+  border: 0;
+  border-radius: 999px;
+  background: #fe2c55;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.figma-migration-button:hover,
+.migration-nav-button:hover,
+.preview-back-button:hover,
+.preview-cover-button:hover {
+  background: #e5264d;
+  box-shadow: 0 4px 16px rgba(254, 44, 85, 0.45);
+}
+
+.figma-migration-button:active,
+.migration-nav-button:active,
+.preview-back-button:active,
+.preview-cover-button:active {
+  transform: scale(0.96);
+}
+
+.figma-migration-button:disabled,
+.migration-nav-button:disabled,
+.preview-back-button:disabled,
+.preview-cover-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
+.figma-migration-button {
+  top: 116px;
+  right: max(48px, calc((100vw - 1728px) / 2 + 48px));
+}
+
+.preview-action-row {
+  top: 116px;
+  left: 50vw;
+  right: auto;
+  width: min(calc(100vw - 96px), 1632px);
+  height: 48px;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+.preview-page .preview-back-button,
+.preview-page .preview-cover-button {
+  line-height: 1.5;
+}
+
+.figma-canvas-scroll {
+  inset: 106px 0 0;
+}
+
+/* Final action-button lock: all top red actions share one size, row and response. */
+.figma-migration-button,
+.migration-nav-button,
+.preview-back-button,
+.preview-cover-button {
+  width: 174px;
+  min-width: 174px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 22px 2px;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #fe2c55;
+  color: #ffffff;
+  box-shadow: none;
+  cursor: pointer;
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transform-origin: center;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.preview-page .preview-back-button,
+.preview-page .preview-cover-button {
+  line-height: 1.5;
+}
+
+.figma-migration-button:hover,
+.migration-nav-button:hover,
+.preview-back-button:hover,
+.preview-cover-button:hover {
+  background: #e5264d;
+  box-shadow: 0 4px 16px rgba(254, 44, 85, 0.45);
+}
+
+.figma-migration-button:active,
+.migration-nav-button:active,
+.preview-back-button:active,
+.preview-cover-button:active {
+  transform: scale(0.96);
+}
+
+.figma-migration-button:disabled,
+.migration-nav-button:disabled,
+.preview-back-button:disabled,
+.preview-cover-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
+.figma-migration-button span:last-child,
+.migration-nav-button span[aria-hidden] {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.figma-migration-button {
+  top: 100px;
+  right: max(48px, calc((100vw - 1728px) / 2 + 48px));
+}
+
+.migration-fixed-frame {
+  width: min(100vw, 1728px);
+  height: 48px;
+  margin: -6px auto 0;
+  padding: 0 48px;
+}
+
+.migration-toolbar {
+  height: 48px;
+  min-height: 48px;
+}
+
+.preview-action-row {
+  top: 100px;
+  left: 50vw;
+  right: auto;
+  width: min(calc(100vw - 96px), 1632px);
+  height: 48px;
+  padding: 0;
+  transform: translateX(-50%);
 }
 
 .figma-structure-card.selected .figma-port.bottom {

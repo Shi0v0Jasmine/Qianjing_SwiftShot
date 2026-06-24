@@ -54,9 +54,9 @@ const DEFAULT_CAMERA: CanvasCamera = {
 };
 
 const cardImages = [
-  "https://www.figma.com/api/mcp/asset/7a9bb822-f69c-4344-9da9-27ec440b9d2e",
-  "https://www.figma.com/api/mcp/asset/45d15bc2-c541-433f-9c4c-2a1db76e627d",
-  "https://www.figma.com/api/mcp/asset/27f882c5-4b54-4e3e-b9b7-811c7dfe6429"
+  "/mock-assets/laptop-thumb.png",
+  "/mock-assets/product-detail.png",
+  "/mock-assets/person-drinking.png"
 ];
 
 const figmaLabels = ["Hook", "产品介入", "感官特写", "使用动作", "使用动作", "行动引导"];
