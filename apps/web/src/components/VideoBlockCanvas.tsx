@@ -5,12 +5,14 @@ import {
 } from "../api/videoAnalysisApi";
 import type { V2CanvasNode, V2CanvasSession } from "../api/client";
 import type { CanvasBlock, V2MaterialAssignment, V2MaterialCoverageSlot } from "../types";
+import { useToast } from "./Toast";
 
 type VideoBlockCanvasProps = {
   blocks: CanvasBlock[];
   canvasSession?: V2CanvasSession;
   canvasSessionId?: string;
   selectedBlockId: string;
+  exportBusy?: boolean;
   onCanvasSessionChange?: (canvasSession: V2CanvasSession) => void;
   onSelectBlock: (blockId: string) => void;
   onUpdateBlock: (updatedBlock: CanvasBlock) => void;
@@ -614,6 +616,7 @@ export const VideoBlockCanvas = ({
   blocks,
   canvasSession,
   canvasSessionId,
+  exportBusy = false,
   selectedBlockId,
   onCanvasSessionChange,
   onSelectBlock,
@@ -623,6 +626,7 @@ export const VideoBlockCanvas = ({
   onHome,
   projectName = "口红广告"
 }: VideoBlockCanvasProps) => {
+  const { notify } = useToast();
   const displayBlocks = useMemo(
     () => createCanvasDisplayBlocks(blocks, canvasSession),
     [blocks, canvasSession]
@@ -969,10 +973,30 @@ export const VideoBlockCanvas = ({
     setActiveEditorBlockId(canEdit ? blockId : null);
   };
 
+  const openCompletionEditor = (blockId: string) => {
+    const block = displayBlocks.find((item) => item.id === blockId);
+    if (!block) {
+      return;
+    }
+    setSelectedCanvasBlockId(blockId);
+    onSelectBlock(getBackendSlotId(block));
+    setActiveEditorBlockId(blockId);
+    notify({
+      tone: "info",
+      title: "AI 补齐",
+      message: "已打开关键帧和视频 prompt 编辑器。"
+    });
+  };
+
   const generateKeyframeCandidates = async (blockId: string) => {
     setActiveEditorBlockId(blockId);
     setKeyframeLoadingBlockId(blockId);
     setSelectedCandidateUrl(null);
+    notify({
+      tone: "info",
+      title: "正在生成关键帧",
+      message: "AI 正在为缺失素材生成候选画面。"
+    });
 
     const blockIndex = displayBlocks.findIndex((block) => block.id === blockId);
     const block = displayBlocks[blockIndex];
@@ -1006,8 +1030,18 @@ export const VideoBlockCanvas = ({
         delete next[blockId];
         return next;
       });
+      notify({
+        tone: "success",
+        title: "关键帧已生成",
+        message: generatedUris.length > 0 ? "请选择一张候选图继续生成视频。" : "已完成生成，但未返回候选图。"
+      });
     } catch (error) {
       console.warn("V2 image candidate generation failed.", error);
+      notify({
+        tone: "error",
+        title: "关键帧生成失败",
+        message: error instanceof Error ? error.message : "请稍后重试。"
+      });
     } finally {
       setKeyframeLoadingBlockId(null);
     }
@@ -1055,6 +1089,11 @@ export const VideoBlockCanvas = ({
 
     setGeneratingVideoBlockId(block.id);
     setActiveEditorBlockId(null);
+    notify({
+      tone: "info",
+      title: "AI 视频生成中",
+      message: "正在补齐当前缺失素材节点。"
+    });
 
     try {
       const durationSeconds =
@@ -1112,9 +1151,19 @@ export const VideoBlockCanvas = ({
       });
 
       setGeneratingVideoBlockId(null);
+      notify({
+        tone: "success",
+        title: "AI 生成完成",
+        message: "缺失素材已补齐到画布节点。"
+      });
     } catch (error) {
       console.warn("V2 image-to-video generation failed.", error);
       setGeneratingVideoBlockId(null);
+      notify({
+        tone: "error",
+        title: "AI 生成失败",
+        message: error instanceof Error ? error.message : "请调整 prompt 后重试。"
+      });
     }
   };
 
@@ -1151,16 +1200,26 @@ export const VideoBlockCanvas = ({
           <strong>{projectName}</strong>
           <i aria-hidden="true">✎</i>
         </button>
-        <div className="figma-analysis-avatar" aria-label="用户头像" />
+        <div className="figma-analysis-avatar" aria-hidden="true" />
       </header>
 
       <nav className="figma-canvas-tools" aria-label="画布工具">
-        <button type="button" title="导出" onClick={onExport}>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M12 4v11" />
-            <path d="m7 9 5-5 5 5" />
-            <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
-          </svg>
+        <button
+          aria-busy={exportBusy}
+          disabled={exportBusy}
+          type="button"
+          title={exportBusy ? "正在导出" : "导出"}
+          onClick={onExport}
+        >
+          {exportBusy ? (
+            <span className="ui-spinner" aria-hidden="true" />
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 4v11" />
+              <path d="m7 9 5-5 5 5" />
+              <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+            </svg>
+          )}
         </button>
         <button type="button" title="帮助" onClick={() => setShowHelp((value) => !value)}>
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -1274,7 +1333,7 @@ export const VideoBlockCanvas = ({
                     {isGeneratingVideo ? (
                       <div className="figma-generating-state">
                         <span aria-hidden="true" />
-                        <strong>Generating</strong>
+                        <strong>AI 生成中</strong>
                       </div>
                     ) : gap ? (
                       <div className="figma-gap-card missing-material">
@@ -1314,6 +1373,31 @@ export const VideoBlockCanvas = ({
                           <br />
                           试试AI补齐吧！
                         </p>
+                        <button
+                          aria-label={`AI 补齐${labelForBlock(block, index)}`}
+                          className="figma-gap-cta"
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.stopPropagation();
+                            openCompletionEditor(block.id);
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onPointerUp={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openCompletionEditor(block.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") {
+                              return;
+                            }
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openCompletionEditor(block.id);
+                          }}
+                        >
+                          AI 补齐
+                        </button>
                       </div>
                     ) : cardVideo ? (
                       <>
@@ -1466,6 +1550,14 @@ export const VideoBlockCanvas = ({
       </div>
 
       <div className="figma-zoom-control" aria-label="缩放比例">
+        <button
+          type="button"
+          onClick={() => applyZoom(zoom - ZOOM_STEP)}
+          title="缩小"
+          aria-label="缩小画布"
+        >
+          -
+        </button>
         <button type="button" onClick={resetViewport} title="重置画布">
           复位
         </button>
@@ -1482,6 +1574,14 @@ export const VideoBlockCanvas = ({
           value={zoomDraft}
         />
         <span>%</span>
+        <button
+          type="button"
+          onClick={() => applyZoom(zoom + ZOOM_STEP)}
+          title="放大"
+          aria-label="放大画布"
+        >
+          +
+        </button>
       </div>
 
       {showHelp ? (

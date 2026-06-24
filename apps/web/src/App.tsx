@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "./components/AppShell";
+import { ToastProvider } from "./components/Toast";
 import { WorkspaceViews } from "./components/WorkspaceViews";
 import {
   canvasBlocks as fallbackCanvasBlocks,
@@ -105,32 +106,34 @@ export const App = () => {
   };
 
   return (
-    <AppShell>
-      <main className={`workspace page-${activeStep}`}>
-        <WorkspaceViews
-          activeStep={activeStep}
-          blocks={blocks}
-          materialFiles={workflowResult?.materialFiles ?? []}
-          onSelectBlock={setSelectedBlockId}
-          onUpdateBlock={handleUpdateBlock}
-          onReorderBlocks={handleReorderBlocks}
-          onStepChange={setActiveStep}
-          onWorkflowPatch={handleWorkflowPatch}
-          onWorkflowReady={setWorkflowResult}
-          sampleAnalysis={workflowResult?.sampleAnalysis}
-          sampleFile={workflowResult?.sampleFile}
-          sampleFiles={workflowResult?.sampleFiles}
-          canvasSession={workflowResult?.canvasSession}
-          scriptSession={workflowResult?.scriptSession}
-          selectedBlock={selectedBlock}
-          selectedBlockId={selectedBlockId}
-          structureBlueprint={workflowResult?.structureBlueprint}
-          workflowResult={workflowResult}
-          v2PipelineResult={workflowResult?.v2PipelineResult}
-          projectName={projectName}
-          onProjectNameChange={setProjectName}
-        />
-      </main>
-    </AppShell>
+    <ToastProvider>
+      <AppShell>
+        <main className={`workspace page-${activeStep}`}>
+          <WorkspaceViews
+            activeStep={activeStep}
+            blocks={blocks}
+            materialFiles={workflowResult?.materialFiles ?? []}
+            onSelectBlock={setSelectedBlockId}
+            onUpdateBlock={handleUpdateBlock}
+            onReorderBlocks={handleReorderBlocks}
+            onStepChange={setActiveStep}
+            onWorkflowPatch={handleWorkflowPatch}
+            onWorkflowReady={setWorkflowResult}
+            sampleAnalysis={workflowResult?.sampleAnalysis}
+            sampleFile={workflowResult?.sampleFile}
+            sampleFiles={workflowResult?.sampleFiles}
+            canvasSession={workflowResult?.canvasSession}
+            scriptSession={workflowResult?.scriptSession}
+            selectedBlock={selectedBlock}
+            selectedBlockId={selectedBlockId}
+            structureBlueprint={workflowResult?.structureBlueprint}
+            workflowResult={workflowResult}
+            v2PipelineResult={workflowResult?.v2PipelineResult}
+            projectName={projectName}
+            onProjectNameChange={setProjectName}
+          />
+        </main>
+      </AppShell>
+    </ToastProvider>
   );
 };

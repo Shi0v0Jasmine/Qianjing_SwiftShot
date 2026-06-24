@@ -22,6 +22,7 @@ import type {
   V2CanvasSession,
   V2ScriptSession
 } from "../api/client";
+import { useToast } from "./Toast";
 import {
   canvasBlocks as fallbackCanvasBlocks,
   gapReport,
@@ -340,7 +341,18 @@ const readTextAssets = async (files: File[]) => {
 };
 
 const parseDurationSeconds = (value: string): number | undefined => {
-  const rangeMatch = value.match(
+  const trimmed = value.trim();
+  const clockMatch = trimmed.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/u);
+  if (clockMatch) {
+    const first = Number(clockMatch[1]);
+    const second = Number(clockMatch[2]);
+    const third = Number(clockMatch[3] ?? 0);
+    const durationSeconds = clockMatch[3] ? first * 3600 + second * 60 + third : first * 60 + second;
+
+    return durationSeconds > 0 ? Number(durationSeconds.toFixed(3)) : undefined;
+  }
+
+  const rangeMatch = trimmed.match(
     /(\d+(?:\.\d+)?)\s*(?:-|~|–|—|到|至)\s*(\d+(?:\.\d+)?)/u
   );
   if (rangeMatch) {
@@ -351,7 +363,7 @@ const parseDurationSeconds = (value: string): number | undefined => {
     return durationSeconds > 0 ? Number(durationSeconds.toFixed(3)) : undefined;
   }
 
-  const singleMatch = value.match(/(\d+(?:\.\d+)?)/u);
+  const singleMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*(?:s|秒)?$/iu);
   const durationSeconds = Number(singleMatch?.[1]);
 
   return Number.isFinite(durationSeconds) && durationSeconds > 0
@@ -481,6 +493,8 @@ const CanvasTopBar = ({
   title,
   projectName
 }: HeaderProps) => {
+  const activeIndex = steps.findIndex((step) => step.key === activeStep);
+
   return (
     <header className="page-header">
       <div className="header-main">
@@ -492,9 +506,7 @@ const CanvasTopBar = ({
           </div>
         </div>
         <div className="header-actions">
-          <div className="figma-avatar" aria-hidden="true">
-            C
-          </div>
+          <div className="figma-avatar" aria-hidden="true" />
           {onNext ? (
             <button className="primary-action" onClick={onNext} type="button">
               {actionLabel}
@@ -504,18 +516,22 @@ const CanvasTopBar = ({
       </div>
       <p className="page-subtitle">{subtitle}</p>
       <nav className="flow-stepper" aria-label="产品流程">
-        {steps.map((step, index) => (
-          <button
-            className={step.key === activeStep ? "step-pill active" : "step-pill"}
-            key={step.key}
-            onClick={() => onStepChange(step.key)}
-            type="button"
-          >
-            <span>{index + 1}</span>
+        {steps.map((step, index) => {
+          const completed = activeIndex > index;
+          return (
+            <button
+              aria-current={step.key === activeStep ? "step" : undefined}
+              className={`step-pill ${step.key === activeStep ? "active" : ""} ${completed ? "completed" : ""}`}
+              key={step.key}
+              onClick={() => onStepChange(step.key)}
+              type="button"
+            >
+            <span>{completed ? "✓" : index + 1}</span>
             <strong>{step.label}</strong>
             <small>{step.description}</small>
           </button>
-        ))}
+          );
+        })}
       </nav>
     </header>
   );
@@ -534,7 +550,10 @@ const InputView = ({
   onWorkflowReady: (result: WorkflowRunResult) => void;
   projectName: string;
 }) => {
+  const { notify } = useToast();
   const [brief, setBrief] = useState("");
+  const [openingCanvasIndex, setOpeningCanvasIndex] = useState<number | null>(null);
+  const [selectedCanvasIndex, setSelectedCanvasIndex] = useState<number | null>(hasExistingCanvas ? 0 : null);
   const [materialFiles, setMaterialFiles] = useState<File[]>([]);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineNote, setPipelineNote] = useState("等待上传样例视频");
@@ -546,13 +565,43 @@ const InputView = ({
   const isRunning = ["uploading", "analyzing", "extracting", "generating"].includes(pipelineStatus);
 
   const updateSampleFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    setSampleFiles(Array.from(event.target.files ?? []));
+    const files = Array.from(event.target.files ?? []);
+    setSampleFiles(files);
     setPipelineError("");
+    if (files.length > 0) {
+      notify({
+        tone: "success",
+        title: "上传就绪",
+        message: `已添加 ${files.length} 个参考视频。`
+      });
+    }
   };
 
   const updateMaterialFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    setMaterialFiles(Array.from(event.target.files ?? []));
+    const files = Array.from(event.target.files ?? []);
+    setMaterialFiles(files);
     setPipelineError("");
+    if (files.length > 0) {
+      notify({
+        tone: "success",
+        title: "素材已添加",
+        message: `已添加 ${files.length} 个真实素材。`
+      });
+    }
+  };
+
+  const openExistingCanvas = (index: number) => {
+    setSelectedCanvasIndex(index);
+    setOpeningCanvasIndex(index);
+    notify({
+      tone: "info",
+      title: "正在打开画布",
+      message: index === 0 && hasExistingCanvas ? "正在恢复最近的画布状态。" : "正在准备样例画布。"
+    });
+    window.setTimeout(() => {
+      setOpeningCanvasIndex(null);
+      onStepChange(index === 0 && hasExistingCanvas ? "gap-fill" : "analysis");
+    }, 360);
   };
 
   const runPipeline = async () => {
@@ -563,6 +612,11 @@ const InputView = ({
     if (!USE_MOCK && sampleFiles.length === 0) {
       setPipelineStatus("error");
       setPipelineError("请先上传至少一个样例视频。");
+      notify({
+        tone: "warning",
+        title: "缺少样例视频",
+        message: "请先上传至少一个样例视频再开始分析。"
+      });
       return;
     }
 
@@ -570,6 +624,11 @@ const InputView = ({
       setPipelineError("");
       setPipelineStatus("uploading");
       setPipelineNote("正在上传");
+      notify({
+        tone: "info",
+        title: "开始分析",
+        message: "正在上传素材并分析视频结构。"
+      });
       const result = await runVideoAnalysisWorkflow({
         brief,
         materialFiles,
@@ -582,6 +641,11 @@ const InputView = ({
 
       setPipelineStatus("success");
       setPipelineNote("分析完成");
+      notify({
+        tone: "success",
+        title: "分析完成",
+        message: "已生成样例拆解和结构迁移草稿。"
+      });
       onWorkflowReady(result);
       onNext();
       return;
@@ -590,6 +654,11 @@ const InputView = ({
       setPipelineStatus("error");
       setPipelineNote("接口连接失败");
       setPipelineError(getErrorMessage(error));
+      notify({
+        tone: "error",
+        title: "分析失败",
+        message: getErrorMessage(error)
+      });
       return;
     }
   };
@@ -600,7 +669,7 @@ const InputView = ({
         <button className="home-brand-button" onClick={() => onStepChange("input")} type="button">
           迁镜
         </button>
-        <div className="figma-avatar">F</div>
+        <div className="figma-avatar" aria-hidden="true" />
       </header>
 
       <main className="content-container">
@@ -617,8 +686,22 @@ const InputView = ({
               value={brief}
               placeholder="详细描述一下今天的任务吧..."
             />
-            <button aria-label="提交需求" onClick={runPipeline} type="button" className="submit-arrow-btn">
-              {isRunning ? "..." : <ArrowUpIcon />}
+            <button
+              aria-busy={isRunning}
+              aria-label={isRunning ? "正在分析需求" : "提交需求"}
+              className="submit-arrow-btn"
+              disabled={isRunning}
+              onClick={runPipeline}
+              type="button"
+            >
+              {isRunning ? (
+                <>
+                  <span className="ui-spinner" aria-hidden="true" />
+                  <span className="submit-loading-text">分析中</span>
+                </>
+              ) : (
+                <ArrowUpIcon />
+              )}
             </button>
           </div>
 
@@ -715,14 +798,22 @@ const InputView = ({
                 </>
               );
 
-              return hasExistingCanvas && i === 0 ? (
-                <button className="canvas-card" key={i} onClick={() => onStepChange("gap-fill")} type="button">
+              const selected = selectedCanvasIndex === i;
+              const loading = openingCanvasIndex === i;
+
+              return (
+                <button
+                  aria-busy={loading}
+                  aria-pressed={selected}
+                  className={`canvas-card ${selected ? "selected" : ""} ${loading ? "loading" : ""}`}
+                  disabled={openingCanvasIndex !== null}
+                  key={i}
+                  onClick={() => openExistingCanvas(i)}
+                  type="button"
+                >
                   {cardContent}
+                  {loading ? <span className="canvas-card-loading"><span className="ui-spinner" aria-hidden="true" />加载中</span> : null}
                 </button>
-              ) : (
-                <article className="canvas-card canvas-card-placeholder" key={i}>
-                  {cardContent}
-                </article>
               );
             })}
           </div>
@@ -973,9 +1064,11 @@ const FigmaSampleAnalysisView = ({
   projectName: string;
   onProjectNameChange: (name: string) => void;
 }) => {
+  const { notify } = useToast();
   const [activeSample, setActiveSample] = useState(v2PipelineResult || sampleAnalysis ? 0 : 2);
   const [extraSamples, setExtraSamples] = useState<ExtraSample[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [selectedAnalysisRowIndex, setSelectedAnalysisRowIndex] = useState(0);
   const [tempTitle, setTempTitle] = useState(projectName);
   const addSampleInputRef = useRef<HTMLInputElement>(null);
   const v2Tables = v2PipelineResult?.stages.reference_analysis_tables ?? [];
@@ -1018,6 +1111,11 @@ const FigmaSampleAnalysisView = ({
 
     const selectedFiles = Array.from(files);
     e.target.value = "";
+    notify({
+      tone: "info",
+      title: "正在添加样例",
+      message: `已选择 ${selectedFiles.length} 个样例视频，正在分析。`
+    });
 
     if (v2PipelineResult) {
       const firstNewIndex = baseSampleCount + extraSamples.length;
@@ -1075,6 +1173,11 @@ const FigmaSampleAnalysisView = ({
         });
         setExtraSamples([]);
         setActiveSample(Math.max(0, nextSampleFiles.length - 1));
+        notify({
+          tone: "success",
+          title: "样例已更新",
+          message: "新增样例已完成分析，并刷新了结构草稿。"
+        });
       } catch (error) {
         console.warn("Failed to add v2 sample video.", error);
         setExtraSamples((prev) =>
@@ -1084,6 +1187,11 @@ const FigmaSampleAnalysisView = ({
               : sample
           )
         );
+        notify({
+          tone: "error",
+          title: "样例分析失败",
+          message: getErrorMessage(error)
+        });
       }
 
       return;
@@ -1109,6 +1217,11 @@ const FigmaSampleAnalysisView = ({
               : s
           )
         );
+        notify({
+          tone: "success",
+          title: "样例分析完成",
+          message: `${file.name} 已生成拆解结果。`
+        });
       }, 1500);
     });
   };
@@ -1142,6 +1255,11 @@ const FigmaSampleAnalysisView = ({
   };
 
   const active = getActiveRows();
+  const activeDetail = active.rows?.[selectedAnalysisRowIndex] ?? active.rows?.[0];
+
+  useEffect(() => {
+    setSelectedAnalysisRowIndex(0);
+  }, [activeSample]);
 
   const saveTitle = () => {
     setIsEditingTitle(false);
@@ -1247,8 +1365,22 @@ const FigmaSampleAnalysisView = ({
                 <div role="columnheader" style={{ width: '280px', flexShrink: 0 }}>分镜描述</div>
                 <div role="columnheader" style={{ width: '360px', flexShrink: 0 }}>迁移可能性</div>
               </div>
-              {(active.rows ?? []).map((row) => (
-                <div className="figma-analysis-row" key={`${activeSample}-${row.duration}`} role="row">
+              {(active.rows ?? []).map((row, rowIndex) => (
+                <div
+                  aria-selected={selectedAnalysisRowIndex === rowIndex}
+                  className={`figma-analysis-row ${selectedAnalysisRowIndex === rowIndex ? "selected" : ""}`}
+                  key={`${activeSample}-${row.duration}`}
+                  onClick={() => setSelectedAnalysisRowIndex(rowIndex)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") {
+                      return;
+                    }
+                    event.preventDefault();
+                    setSelectedAnalysisRowIndex(rowIndex);
+                  }}
+                  role="row"
+                  tabIndex={0}
+                >
                   <div className="duration-cell" role="cell">
                     {row.duration}
                   </div>
@@ -1266,6 +1398,23 @@ const FigmaSampleAnalysisView = ({
               ))}
             </div>
           )}
+          {!active.loading && activeDetail ? (
+            <aside className="analysis-detail-panel" aria-live="polite">
+              <span>当前分镜详情</span>
+              <strong>{activeDetail.shotTitle}</strong>
+              <p>{activeDetail.shotDescription}</p>
+              <dl>
+                <div>
+                  <dt>时长</dt>
+                  <dd>{activeDetail.duration}</dd>
+                </div>
+                <div>
+                  <dt>迁移建议</dt>
+                  <dd>{activeDetail.migrationPossibility}</dd>
+                </div>
+              </dl>
+            </aside>
+          ) : null}
         </main>
       </div>
     </div>
@@ -1295,9 +1444,12 @@ const StructureMigrationView = ({
   onProjectNameChange?: (name: string) => void;
   scriptSession?: V2ScriptSession;
 }) => {
+  const { notify } = useToast();
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [durationErrors, setDurationErrors] = useState<Record<string, string>>({});
+  const [fieldFeedback, setFieldFeedback] = useState<Record<string, string>>({});
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [localMaterials, setLocalMaterials] = useState<Record<string, string[]>>({});
   const [pendingMaterialBlockId, setPendingMaterialBlockId] = useState<string | null>(null);
@@ -1318,6 +1470,15 @@ const StructureMigrationView = ({
 
   const openMaterialPicker = (blockId: string) => {
     setPendingMaterialBlockId(blockId);
+    setFieldFeedback((current) => ({
+      ...current,
+      [blockId]: "请选择要添加到这一行的素材"
+    }));
+    notify({
+      tone: "info",
+      title: "添加素材",
+      message: "请选择文件，素材会添加到当前分镜。"
+    });
     materialInputRef.current?.click();
   };
 
@@ -1336,6 +1497,10 @@ const StructureMigrationView = ({
         ...files.map((file) => file.name)
       ]
     }));
+    setFieldFeedback((current) => ({
+      ...current,
+      [targetBlockId]: `已添加 ${files.length} 个素材，等待重新匹配`
+    }));
     if (scriptSession) {
       try {
         const response = await uploadV2ScriptSlotMaterials(
@@ -1348,9 +1513,29 @@ const StructureMigrationView = ({
           canvasRevalidateResult: undefined,
           canvasSession: undefined
         });
+        notify({
+          tone: "success",
+          title: "素材已添加",
+          message: `已添加 ${files.length} 个素材到当前分镜。`
+        });
       } catch (error) {
         console.warn("V2 script slot material upload failed.", error);
+        setFieldFeedback((current) => ({
+          ...current,
+          [targetBlockId]: "上传失败，请重试"
+        }));
+        notify({
+          tone: "error",
+          title: "素材上传失败",
+          message: getErrorMessage(error)
+        });
       }
+    } else {
+      notify({
+        tone: "success",
+        title: "素材已添加",
+        message: `已添加 ${files.length} 个本地素材。`
+      });
     }
 
     setPendingMaterialBlockId(null);
@@ -1364,9 +1549,9 @@ const StructureMigrationView = ({
       voiceover_text?: string;
       copy?: string;
     }
-  ) => {
+  ): Promise<boolean> => {
     if (!scriptSession) {
-      return;
+      return true;
     }
 
     try {
@@ -1376,8 +1561,15 @@ const StructureMigrationView = ({
         payload
       );
       onWorkflowPatch({ scriptSession: nextSession });
+      return true;
     } catch (error) {
       console.warn("V2 script slot sync failed.", error);
+      notify({
+        tone: "error",
+        title: "保存失败",
+        message: getErrorMessage(error)
+      });
+      return false;
     }
   };
 
@@ -1416,6 +1608,11 @@ const StructureMigrationView = ({
     }
 
     setCanvasRevalidateStatus("matching");
+    notify({
+      tone: "info",
+      title: "正在匹配画布",
+      message: "正在重新匹配素材并生成画布节点。"
+    });
     try {
       const revalidateResult = await revalidateVideoAnalysisCanvas(scriptSession.session_id);
       onWorkflowPatch({
@@ -1423,10 +1620,20 @@ const StructureMigrationView = ({
         canvasSession: revalidateResult.canvas_session
       });
       setCanvasRevalidateStatus("idle");
+      notify({
+        tone: "success",
+        title: "画布已更新",
+        message: "素材匹配完成，正在进入画布。"
+      });
       onStepChange("gap-fill");
     } catch (error) {
       console.warn("V2 canvas revalidate failed.", error);
       setCanvasRevalidateStatus("error");
+      notify({
+        tone: "error",
+        title: "匹配失败",
+        message: "已进入画布，你可以稍后返回重试匹配。"
+      });
       onStepChange("gap-fill");
     }
   };
@@ -1550,6 +1757,11 @@ const StructureMigrationView = ({
                 ]
                   .filter(Boolean)
                   .join(" ");
+                const durationErrorId = `duration-error-${block.id}`;
+                const durationFeedbackId = `duration-feedback-${block.id}`;
+                const durationFeedback = fieldFeedback[block.id]?.includes("时长")
+                  ? fieldFeedback[block.id]
+                  : "";
 
                 return (
                   <div
@@ -1582,22 +1794,77 @@ const StructureMigrationView = ({
                     {/* 时长: 可编辑 */}
                     <div className="migration-col col-duration editable">
                       <input
+                        aria-describedby={
+                          durationErrors[block.id]
+                            ? durationErrorId
+                            : durationFeedback
+                              ? durationFeedbackId
+                              : undefined
+                        }
+                        aria-invalid={durationErrors[block.id] ? "true" : "false"}
                         type="text"
-                        className="migration-duration-input"
+                        className={`migration-duration-input ${durationErrors[block.id] ? "has-error" : ""}`}
                         value={block.timeRange}
                         onMouseDown={stopDrag}
                         onClick={stopDrag}
-                        onChange={(event) =>
-                          onUpdateBlock({ ...block, timeRange: event.target.value })
-                        }
-                        onBlur={(event) => {
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          const isDraftInvalid =
+                            nextValue.trim().length > 0 && !parseDurationSeconds(nextValue);
+                          setDurationErrors((current) => {
+                            const next = { ...current };
+                            if (isDraftInvalid) {
+                              next[block.id] = "格式有误";
+                            } else {
+                              delete next[block.id];
+                            }
+                            return next;
+                          });
+                          setFieldFeedback((current) => ({
+                            ...current,
+                            [block.id]: isDraftInvalid ? "支持 0-3s / 3.0s / 00:03" : ""
+                          }));
+                          onUpdateBlock({ ...block, timeRange: event.target.value });
+                        }}
+                        onBlur={async (event) => {
                           const requiredDuration = parseDurationSeconds(event.target.value);
-                          if (requiredDuration) {
-                            syncScriptSlot(block, { required_duration: requiredDuration });
+                          if (!requiredDuration) {
+                            setDurationErrors((current) => ({
+                              ...current,
+                              [block.id]: "格式有误"
+                            }));
+                            setFieldFeedback((current) => ({
+                              ...current,
+                              [block.id]: "支持 0-3s / 3.0s / 00:03"
+                            }));
+                            notify({
+                              tone: "warning",
+                              title: "时长格式有误",
+                              message: "支持 0-3s、3.0s 或 00:03。"
+                            });
+                            return;
                           }
+                          setFieldFeedback((current) => ({
+                            ...current,
+                            [block.id]: "正在保存时长..."
+                          }));
+                          const saved = await syncScriptSlot(block, { required_duration: requiredDuration });
+                          setFieldFeedback((current) => ({
+                            ...current,
+                            [block.id]: saved ? "时长已保存" : "时长保存失败"
+                          }));
                         }}
                         placeholder="3s"
                       />
+                      {durationErrors[block.id] ? (
+                        <small className="migration-field-feedback error" id={durationErrorId}>
+                          {durationErrors[block.id]}
+                        </small>
+                      ) : durationFeedback ? (
+                        <small className="migration-field-feedback" id={durationFeedbackId}>
+                          {durationFeedback}
+                        </small>
+                      ) : null}
                     </div>
 
                     {/* 旁白: 可编辑 */}
@@ -1624,15 +1891,26 @@ const StructureMigrationView = ({
                               };
                           onUpdateBlock({ ...block, timeline: updatedTimeline });
                         }}
-                        onBlur={(event) => {
-                          syncScriptSlot(block, {
+                        onBlur={async (event) => {
+                          setFieldFeedback((current) => ({
+                            ...current,
+                            [block.id]: "正在保存旁白..."
+                          }));
+                          const saved = await syncScriptSlot(block, {
                             copy: event.target.value,
                             voiceover_text: event.target.value
                           });
+                          setFieldFeedback((current) => ({
+                            ...current,
+                            [block.id]: saved ? "旁白已保存" : "旁白保存失败"
+                          }));
                         }}
                         placeholder="输入旁白文本..."
                         rows={2}
                       />
+                      {fieldFeedback[block.id]?.includes("旁白") ? (
+                        <small className="migration-field-feedback">{fieldFeedback[block.id]}</small>
+                      ) : null}
                     </div>
 
                     {/* 我的素材: 只读，过多时框内滚动 */}
@@ -1652,8 +1930,9 @@ const StructureMigrationView = ({
 
                     <div className="migration-col col-add">
                       <button
-                        className="migration-add-material"
+                        className={`migration-add-material ${pendingMaterialBlockId === block.id ? "loading" : ""}`}
                         type="button"
+                        aria-busy={pendingMaterialBlockId === block.id}
                         aria-label="添加素材"
                         title="添加素材"
                         onMouseDown={stopDrag}
@@ -1664,6 +1943,9 @@ const StructureMigrationView = ({
                       >
                         +
                       </button>
+                      {fieldFeedback[block.id]?.includes("素材") || fieldFeedback[block.id]?.includes("文件") ? (
+                        <small className="migration-field-feedback">{fieldFeedback[block.id]}</small>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1698,12 +1980,30 @@ const GapFillView = ({
   scriptSession?: V2ScriptSession;
   projectName?: string;
 }) => {
+  const { notify } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
+
   const exportFinalVideo = async () => {
+    if (isExporting) {
+      return;
+    }
+
     if (!canvasSession) {
+      notify({
+        tone: "info",
+        title: "进入预览",
+        message: "当前使用本地预览数据，正在打开预览页。"
+      });
       onStepChange("demo");
       return;
     }
 
+    setIsExporting(true);
+    notify({
+      tone: "info",
+      title: "正在生成预览",
+      message: "正在组装画布内容，请稍候。"
+    });
     try {
       const finalVideo = await assembleVideoAnalysisFinalVideo(canvasSession.canvas_session_id);
       const nextCanvasSession = finalVideo.canvas_session as V2CanvasSession | undefined;
@@ -1713,9 +2013,20 @@ const GapFillView = ({
         finalAssembly: finalVideo.final_assembly,
         finalVideo
       });
+      notify({
+        tone: "success",
+        title: "预览已生成",
+        message: "最终预览已准备完成。"
+      });
     } catch (error) {
       console.warn("V2 final assembly failed.", error);
+      notify({
+        tone: "error",
+        title: "预览生成失败",
+        message: getErrorMessage(error)
+      });
     }
+    setIsExporting(false);
     onStepChange("demo");
   };
 
@@ -1725,6 +2036,7 @@ const GapFillView = ({
         blocks={blocks}
         canvasSession={canvasSession}
         canvasSessionId={canvasSession?.canvas_session_id}
+        exportBusy={isExporting}
         onBack={() => onStepChange("migration")}
         onCanvasSessionChange={(nextCanvasSession) =>
           onWorkflowPatch({ canvasSession: nextCanvasSession })
@@ -1966,6 +2278,7 @@ const DemoView = ({
   projectName?: string;
   workflowResult?: WorkflowRunResult | null;
 }) => {
+  const { notify } = useToast();
   const segments = useMemo(
     () => buildPreviewSegments(blocks, workflowResult),
     [blocks, workflowResult]
@@ -2101,10 +2414,20 @@ const DemoView = ({
         getArray(coverPlan.video_description_recommendations).map(getString).find(Boolean) ||
         "用高光画面抓住第一眼，把产品卖点压缩成一句能传播的标题。"
     );
+    notify({
+      tone: "success",
+      title: "封面文案已生成",
+      message: "标题和简介已更新到预览。"
+    });
   };
 
   const handleGenerateCoverImage = () => {
     setCoverImage(bestCoverImage);
+    notify({
+      tone: "success",
+      title: "封面已更新",
+      message: "已使用推荐画面刷新封面预览。"
+    });
   };
 
   const handleExport = async () => {
@@ -2114,6 +2437,11 @@ const DemoView = ({
 
     setExportStatus("exporting");
     setExportMessage("");
+    notify({
+      tone: "info",
+      title: "正在导出",
+      message: "正在合成并导出成品视频。"
+    });
 
     try {
       const canvasSessionId = getCanvasSessionId(workflowResult);
@@ -2163,9 +2491,19 @@ const DemoView = ({
 
       setExportStatus("success");
       setExportMessage("导出成功！快去分享你的作品吧~");
+      notify({
+        tone: "success",
+        title: "导出成功",
+        message: "成品视频已准备下载。"
+      });
     } catch (error) {
       setExportStatus("error");
       setExportMessage(error instanceof Error ? error.message : "导出失败，请稍后再试。");
+      notify({
+        tone: "error",
+        title: "导出失败",
+        message: getErrorMessage(error)
+      });
     }
   };
 
@@ -2179,7 +2517,7 @@ const DemoView = ({
           <strong>{projectName || "口红广告"}</strong>
           <i aria-hidden="true">✎</i>
         </div>
-        <div className="figma-analysis-avatar" aria-label="用户头像" />
+        <div className="figma-analysis-avatar" aria-hidden="true" />
       </header>
 
       <div className="preview-action-row">
@@ -2315,6 +2653,8 @@ const DemoView = ({
 
             <button
               className={`cover-export-button ${exportStatus === "exporting" ? "loading" : ""}`}
+              aria-busy={exportStatus === "exporting"}
+              disabled={exportStatus === "exporting"}
               type="button"
               title="导出成品"
               onClick={handleExport}
