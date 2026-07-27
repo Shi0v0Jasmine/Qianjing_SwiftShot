@@ -5,6 +5,8 @@ import {
 } from "../api/videoAnalysisApi";
 import type { V2CanvasNode, V2CanvasSession } from "../api/client";
 import type { CanvasBlock, V2MaterialAssignment, V2MaterialCoverageSlot } from "../types";
+import { MockAssetImage } from "./MockAssetImage";
+import { MOCK_CANVAS_CARD_IMAGES } from "../mocks/mockAssets";
 
 type VideoBlockCanvasProps = {
   blocks: CanvasBlock[];
@@ -53,11 +55,7 @@ const DEFAULT_CAMERA: CanvasCamera = {
   zoom: 100
 };
 
-const cardImages = [
-  "/mock-assets/laptop-thumb.png",
-  "/mock-assets/product-detail.png",
-  "/mock-assets/person-drinking.png"
-];
+const cardImages = MOCK_CANVAS_CARD_IMAGES;
 
 const figmaLabels = ["Hook", "产品介入", "感官特写", "使用动作", "使用动作", "行动引导"];
 
@@ -1338,7 +1336,12 @@ export const VideoBlockCanvas = ({
                       </>
                     ) : (
                       <>
-                        <img alt={labelForBlock(block, index)} draggable={false} src={image} />
+                        <MockAssetImage
+                          alt={labelForBlock(block, index)}
+                          draggable={false}
+                          missingAlt="画布缩略图不可用"
+                          src={image}
+                        />
                         {playable ? (
                           <button
                             type="button"
@@ -1378,7 +1381,11 @@ export const VideoBlockCanvas = ({
                     <div className="figma-prompt-frame">
                       {selectedKeyframes[editorBlock.id] ? (
                         <div className="figma-selected-keyframe">
-                          <img alt="已选择关键帧" src={selectedKeyframes[editorBlock.id]} />
+                          <MockAssetImage
+                            alt="已选择关键帧"
+                            missingAlt="关键帧不可用"
+                            src={selectedKeyframes[editorBlock.id]}
+                          />
                           <div className="figma-selected-keyframe-actions">
                             <span>已选择</span>
                             <button type="button" onClick={() => openCandidateSelector(editorBlock.id)}>
@@ -1395,7 +1402,12 @@ export const VideoBlockCanvas = ({
                             title="查看候选关键帧"
                           >
                             {keyframeCandidates[editorBlock.id].map((imageUrl, imageIndex) => (
-                              <img alt={`关键帧缩略图 ${imageIndex + 1}`} key={imageUrl} src={imageUrl} />
+                              <MockAssetImage
+                                alt={`关键帧缩略图 ${imageIndex + 1}`}
+                                key={imageUrl}
+                                missingAlt="候选关键帧不可用"
+                                src={imageUrl}
+                              />
                             ))}
                           </button>
                           <button
@@ -1546,7 +1558,11 @@ export const VideoBlockCanvas = ({
                       className={`figma-keyframe-choice-button ${selected ? "is-selected" : ""}`}
                       onClick={() => setSelectedCandidateUrl(imageUrl)}
                     >
-                      <img alt={`候选关键帧 ${index + 1}`} src={imageUrl} />
+                      <MockAssetImage
+                        alt={`候选关键帧 ${index + 1}`}
+                        missingAlt="候选关键帧不可用"
+                        src={imageUrl}
+                      />
                       {selected ? <span className="figma-candidate-check">✓</span> : null}
                     </button>
                     {selected ? (

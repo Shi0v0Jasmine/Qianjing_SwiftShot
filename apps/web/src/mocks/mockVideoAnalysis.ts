@@ -10,6 +10,7 @@ import type {
   V2CanvasSession,
   V2ScriptSession
 } from "../api/client";
+import { MOCK_KEYFRAMES, MOCK_ASSETS } from "./mockAssets";
 
 export type MockVideoAnalysisState =
   | "empty"
@@ -59,14 +60,7 @@ export const mockVideoAnalysisStates: Record<
   }
 };
 
-const keyframes = [
-  "/mock-assets/laptop-thumb.png",
-  "/mock-assets/coffee-preview.png",
-  "/mock-assets/product-detail.png",
-  "/mock-assets/person-drinking.png",
-  "/mock-assets/coffee-cover.png",
-  "/mock-assets/image-generation-panel.png"
-];
+const keyframes = MOCK_KEYFRAMES;
 
 const sampleFile = (file: File | undefined, index: number): UploadedVideoFile => ({
   file_id: `mock_sample_${index + 1}`,
@@ -571,8 +565,8 @@ export const createMockWorkflowResult = ({
 };
 
 export const mockImageCandidates = [
-  "/mock-assets/coffee-preview.png",
-  "/mock-assets/coffee-cover.png",
-  "/mock-assets/product-detail.png",
-  "/mock-assets/person-drinking.png"
+  MOCK_ASSETS.sample.coffeePreview,
+  MOCK_ASSETS.sample.coffeeCover,
+  MOCK_ASSETS.sample.productDetail,
+  MOCK_ASSETS.sample.personDrinking
 ];

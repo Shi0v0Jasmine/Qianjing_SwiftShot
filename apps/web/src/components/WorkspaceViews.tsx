@@ -44,6 +44,8 @@ import type {
 } from "../types";
 import { StatusBadge } from "./StatusBadge";
 import { VideoBlockCanvas } from "./VideoBlockCanvas";
+import { MockAssetImage } from "./MockAssetImage";
+import { MOCK_ASSETS } from "../mocks/mockAssets";
 
 type WorkspaceViewsProps = {
   activeStep: StepKey;
@@ -674,7 +676,11 @@ const InputView = ({
                   {materialFiles.map((file, i) => (
                     <div key={i} className="material-item-preview">
                        {file.type.startsWith('image/') ? (
-                         <img src={URL.createObjectURL(file)} alt={file.name} />
+                         <MockAssetImage
+                           src={URL.createObjectURL(file)}
+                           alt={file.name}
+                           missingAlt="上传素材不可用"
+                         />
                        ) : file.type.startsWith('video/') ? (
                          <video src={URL.createObjectURL(file)} />
                        ) : (
@@ -710,7 +716,7 @@ const InputView = ({
                 : ["Canvas广告", "TF口红", "Vlog"][i] ?? `画布 ${i + 1}`;
               const cardContent = (
                 <>
-                  <img src={src} alt="Canvas placeholder" />
+                  <MockAssetImage src={src} alt="Canvas placeholder" missingAlt="画布占位素材不可用" />
                   <div className="canvas-card-title">{title}</div>
                 </>
               );
@@ -758,18 +764,9 @@ const ArrowUpIcon = () => (
   </svg>
 );
 
-const homeCanvasPlaceholderImages = [
-  "/mock-assets/home-canvas-1.png",
-  "/mock-assets/home-canvas-2.png",
-  "/mock-assets/home-canvas-3.png"
-];
+const homeCanvasPlaceholderImages = MOCK_ASSETS.canvas.home;
 
-const figmaSampleImages = [
-  "/mock-assets/laptop-thumb.png",
-  "/mock-assets/product-detail.png",
-  "/mock-assets/person-drinking.png",
-  "/mock-assets/coffee-preview.png"
-];
+const figmaSampleImages = MOCK_ASSETS.preview.frames;
 
 type SampleAnalysisRow = {
   duration: string;
@@ -1253,7 +1250,11 @@ const FigmaSampleAnalysisView = ({
                     {row.duration}
                   </div>
                   <div className="sample-media-cell" role="cell">
-                    {row.image ? <img alt="" src={row.image} /> : <PlaceholderBlock label={active.label} />}
+                    {row.image ? (
+                      <MockAssetImage alt={`${row.shotTitle} 缩略图`} src={row.image} missingAlt="样例缩略图不可用" />
+                    ) : (
+                      <PlaceholderBlock label={active.label} />
+                    )}
                   </div>
                   <div className="shot-desc-cell" role="cell">
                     <strong>{row.shotTitle}</strong>
@@ -1752,11 +1753,8 @@ type PreviewSegment = {
 };
 
 const previewImages = [
-  "/mock-assets/coffee-preview.png",
-  "/mock-assets/laptop-thumb.png",
-  "/mock-assets/product-detail.png",
-  "/mock-assets/person-drinking.png",
-  "/mock-assets/coffee-cover.png"
+  ...MOCK_ASSETS.preview.frames,
+  MOCK_ASSETS.preview.cover
 ];
 
 const parseRangeDuration = (value: string) => {
@@ -2202,7 +2200,7 @@ const DemoView = ({
               onClick={() => startFrom(index)}
               type="button"
             >
-              <img alt={segment.label} src={segment.thumbnail} />
+              <MockAssetImage alt={segment.label} src={segment.thumbnail} missingAlt="预览片段缩略图不可用" />
               {index !== activeIndex ? <span className="preview-thumb-dim" /> : null}
               {segment.aiGenerated ? <em>AI</em> : null}
             </button>
@@ -2228,7 +2226,11 @@ const DemoView = ({
                 src={finalVideoUrl}
               />
             ) : (
-              <img alt={currentSegment?.label ?? "视频预览"} src={currentSegment?.thumbnail ?? previewImages[0]} />
+              <MockAssetImage
+                alt={currentSegment?.label ?? "视频预览"}
+                src={currentSegment?.thumbnail ?? previewImages[0]}
+                missingAlt="预览缩略图不可用"
+              />
             )}
             {isPreparing ? (
               <div className="preview-loading">
@@ -2308,7 +2310,7 @@ const DemoView = ({
                   <p>{coverIntro}</p>
                 </div>
                 <div className="cover-art">
-                  <img alt="封面预览" src={coverImage} />
+                  <MockAssetImage alt="封面预览" src={coverImage} missingAlt="封面素材不可用" />
                 </div>
               </section>
             </main>
