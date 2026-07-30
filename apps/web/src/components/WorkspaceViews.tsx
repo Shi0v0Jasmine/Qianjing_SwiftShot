@@ -12,6 +12,7 @@ import {
   uploadV2ScriptSlotMaterials,
   uploadSampleVideos
 } from "../api/client";
+import { Sparkles, Plus } from "lucide-react";
 import {
   assembleVideoAnalysisFinalVideo,
   revalidateVideoAnalysisCanvas,
@@ -675,8 +676,15 @@ const InputView = ({
       <main className="content-container">
         <section className="main-section">
           <div className="hero-simple">
-            <h2>今天想做个什么样的视频？</h2>
-            <p>描述你想生成的视频主题、核心目的和风格参考</p>
+            <h2>
+              <Sparkles className="hero-sparkles" />
+              今天想做个什么样的视频？
+            </h2>
+            <div className="hero-swoosh">
+              <svg viewBox="0 0 200 20" preserveAspectRatio="none">
+                <path d="M0,15 Q100,0 200,10" fill="none" stroke="var(--theme)" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
           </div>
 
           <div className="prompt-box-wide">
@@ -739,13 +747,9 @@ const InputView = ({
                 </div>
               ) : (
                 <div className="upload-placeholder">
-                  <div className="icon-video">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="20" height="16" x="2" y="4" rx="2" ry="2" />
-                      <path d="M10 8l6 4-6 4V8z" />
-                    </svg>
+                  <div className="icon-plus-circle">
+                    <Plus className="icon-plus" />
                   </div>
-                  <strong>参考素材</strong>
                   <span>添加你想分析的样例视频</span>
                 </div>
               )}
@@ -769,14 +773,9 @@ const InputView = ({
                 </div>
               ) : (
                 <div className="upload-placeholder">
-                  <div className="icon-materials">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <path d="M21 15l-5-5L5 21" />
-                    </svg>
+                  <div className="icon-plus-circle">
+                    <Plus className="icon-plus" />
                   </div>
-                  <strong>真实素材</strong>
                   <span>添加你的素材</span>
                 </div>
               )}
