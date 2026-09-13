@@ -1,5 +1,17 @@
 # 迁镜（ShotSwift）
 
+## 本地产品演示版
+
+双击根目录的 **启动演示.cmd**，打开 http://127.0.0.1:4173，即可体验中文五步演示工作台：输入、解析、分镜编辑、素材补全、预览导出。
+
+本版提供预制案例与图片，字幕/时长/顺序/素材编辑会真实影响动态预览和本机 MP4 导出。原版入口保留为 `?mode=live`，使用原 API 时请按运行手册启动。
+
+- [演示交付与视频](deliverables/README.md)
+- [产品说明与 JTBD / KANO](docs/product-brief.md)
+- [UI 审查与设计](docs/ui-audit-and-design.md)
+- [启动与展示指南](docs/demo-presenter-guide.md)
+- [验收记录](docs/verification.md)
+
 产品名称：迁镜（ShotSwift）
 
 项目全称：爆款结构迁移引擎：样例驱动的视频结构迁移与 AI 改片 Agent

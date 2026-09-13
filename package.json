@@ -1,0 +1,12 @@
+{
+  "name": "shotswift-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "npm ci --prefix apps/web && npm ci --prefix apps/demo-video",
+    "build": "npm run build --prefix apps/web",
+    "demo": "node scripts/demo-server.mjs",
+    "video": "npm run render --prefix apps/demo-video",
+    "test:demo": "node --test scripts/demo-validation.test.mjs"
+  }
+}

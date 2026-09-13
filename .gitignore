@@ -25,6 +25,9 @@ dist/
 build/
 coverage/
 .vite/
+.bundle/
+deliverables/renders/
+apps/demo-video/.remotion/
 
 # Logs
 *.log

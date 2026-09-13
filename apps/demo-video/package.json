@@ -1,0 +1,26 @@
+{
+  "name": "shotswift-demo-video",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts --port=3001",
+    "typecheck": "tsc --noEmit",
+    "render": "remotion render src/index.ts ShotSwiftPresentation ../../deliverables/ShotSwift-demo-zh.mp4 --codec=h264 --concurrency=3",
+    "render:sample": "remotion render src/index.ts CoffeeAd ../web/public/demo/coffee-ad.mp4 --codec=h264 --concurrency=3",
+    "still": "remotion still src/index.ts ShotSwiftPresentation ../../deliverables/ShotSwift-cover.png --frame=60"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.524",
+    "@remotion/bundler": "4.0.524",
+    "@remotion/renderer": "4.0.524",
+    "remotion": "4.0.524",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "typescript": "5.7.3"
+  }
+}

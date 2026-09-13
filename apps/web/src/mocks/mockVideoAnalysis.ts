@@ -10,7 +10,6 @@ import type {
   V2CanvasSession,
   V2ScriptSession
 } from "../api/client";
-import { MOCK_KEYFRAMES, MOCK_ASSETS } from "./mockAssets";
 
 export type MockVideoAnalysisState =
   | "empty"
@@ -60,7 +59,14 @@ export const mockVideoAnalysisStates: Record<
   }
 };
 
-const keyframes = MOCK_KEYFRAMES;
+const keyframes = [
+  "https://www.figma.com/api/mcp/asset/7a9bb822-f69c-4344-9da9-27ec440b9d2e",
+  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1400&q=85",
+  "https://www.figma.com/api/mcp/asset/45d15bc2-c541-433f-9c4c-2a1db76e627d",
+  "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1400&q=85",
+  "https://www.figma.com/api/mcp/asset/27f882c5-4b54-4e3e-b9b7-811c7dfe6429",
+  "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1400&q=85"
+];
 
 const sampleFile = (file: File | undefined, index: number): UploadedVideoFile => ({
   file_id: `mock_sample_${index + 1}`,
@@ -565,8 +571,8 @@ export const createMockWorkflowResult = ({
 };
 
 export const mockImageCandidates = [
-  MOCK_ASSETS.sample.coffeePreview,
-  MOCK_ASSETS.sample.coffeeCover,
-  MOCK_ASSETS.sample.productDetail,
-  MOCK_ASSETS.sample.personDrinking
+  "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1512207128881-1baee87126fb?auto=format&fit=crop&w=1000&q=80"
 ];

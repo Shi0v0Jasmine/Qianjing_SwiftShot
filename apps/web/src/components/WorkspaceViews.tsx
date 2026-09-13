@@ -17,7 +17,6 @@ import {
   revalidateVideoAnalysisCanvas,
   runVideoAnalysisWorkflow
 } from "../api/videoAnalysisApi";
-import { USE_MOCK } from "../config";
 import type {
   V2CanvasSession,
   V2ScriptSession
@@ -44,8 +43,6 @@ import type {
 } from "../types";
 import { StatusBadge } from "./StatusBadge";
 import { VideoBlockCanvas } from "./VideoBlockCanvas";
-import { MockAssetImage } from "./MockAssetImage";
-import { MOCK_ASSETS } from "../mocks/mockAssets";
 
 type WorkspaceViewsProps = {
   activeStep: StepKey;
@@ -562,7 +559,7 @@ const InputView = ({
       return;
     }
 
-    if (!USE_MOCK && sampleFiles.length === 0) {
+    if (sampleFiles.length === 0) {
       setPipelineStatus("error");
       setPipelineError("请先上传至少一个样例视频。");
       return;
@@ -676,11 +673,7 @@ const InputView = ({
                   {materialFiles.map((file, i) => (
                     <div key={i} className="material-item-preview">
                        {file.type.startsWith('image/') ? (
-                         <MockAssetImage
-                           src={URL.createObjectURL(file)}
-                           alt={file.name}
-                           missingAlt="上传素材不可用"
-                         />
+                         <img src={URL.createObjectURL(file)} alt={file.name} />
                        ) : file.type.startsWith('video/') ? (
                          <video src={URL.createObjectURL(file)} />
                        ) : (
@@ -716,7 +709,7 @@ const InputView = ({
                 : ["Canvas广告", "TF口红", "Vlog"][i] ?? `画布 ${i + 1}`;
               const cardContent = (
                 <>
-                  <MockAssetImage src={src} alt="Canvas placeholder" missingAlt="画布占位素材不可用" />
+                  <img src={src} alt="Canvas placeholder" />
                   <div className="canvas-card-title">{title}</div>
                 </>
               );
@@ -764,9 +757,18 @@ const ArrowUpIcon = () => (
   </svg>
 );
 
-const homeCanvasPlaceholderImages = MOCK_ASSETS.canvas.home;
+const homeCanvasPlaceholderImages = [
+  "https://www.figma.com/api/mcp/asset/1a99447e-d01c-4566-820d-5c1265890eaa",
+  "https://www.figma.com/api/mcp/asset/4651d5ff-b7fa-40bf-a7e2-bbabaa707218",
+  "https://www.figma.com/api/mcp/asset/44e8c1d6-40ab-40da-98c2-6a94cc3b0d06"
+];
 
-const figmaSampleImages = MOCK_ASSETS.preview.frames;
+const figmaSampleImages = [
+  "https://www.figma.com/api/mcp/asset/539affc8-2d0c-423d-a2cd-d4c5dd4afa48",
+  "https://www.figma.com/api/mcp/asset/7876cb39-6467-4237-90f3-50df9e43f22f",
+  "https://www.figma.com/api/mcp/asset/cc685639-818d-4944-ae66-4da8004e89a4",
+  "https://www.figma.com/api/mcp/asset/18570412-5901-487f-a65f-76a94db932de"
+];
 
 type SampleAnalysisRow = {
   duration: string;
@@ -1250,11 +1252,7 @@ const FigmaSampleAnalysisView = ({
                     {row.duration}
                   </div>
                   <div className="sample-media-cell" role="cell">
-                    {row.image ? (
-                      <MockAssetImage alt={`${row.shotTitle} 缩略图`} src={row.image} missingAlt="样例缩略图不可用" />
-                    ) : (
-                      <PlaceholderBlock label={active.label} />
-                    )}
+                    {row.image ? <img alt="" src={row.image} /> : <PlaceholderBlock label={active.label} />}
                   </div>
                   <div className="shot-desc-cell" role="cell">
                     <strong>{row.shotTitle}</strong>
@@ -1753,8 +1751,11 @@ type PreviewSegment = {
 };
 
 const previewImages = [
-  ...MOCK_ASSETS.preview.frames,
-  MOCK_ASSETS.preview.cover
+  "https://www.figma.com/api/mcp/asset/7a9bb822-f69c-4344-9da9-27ec440b9d2e",
+  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1400&q=85",
+  "https://www.figma.com/api/mcp/asset/45d15bc2-c541-433f-9c4c-2a1db76e627d",
+  "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1400&q=85",
+  "https://www.figma.com/api/mcp/asset/27f882c5-4b54-4e3e-b9b7-811c7dfe6429"
 ];
 
 const parseRangeDuration = (value: string) => {
@@ -2200,7 +2201,7 @@ const DemoView = ({
               onClick={() => startFrom(index)}
               type="button"
             >
-              <MockAssetImage alt={segment.label} src={segment.thumbnail} missingAlt="预览片段缩略图不可用" />
+              <img alt={segment.label} src={segment.thumbnail} />
               {index !== activeIndex ? <span className="preview-thumb-dim" /> : null}
               {segment.aiGenerated ? <em>AI</em> : null}
             </button>
@@ -2226,11 +2227,7 @@ const DemoView = ({
                 src={finalVideoUrl}
               />
             ) : (
-              <MockAssetImage
-                alt={currentSegment?.label ?? "视频预览"}
-                src={currentSegment?.thumbnail ?? previewImages[0]}
-                missingAlt="预览缩略图不可用"
-              />
+              <img alt={currentSegment?.label ?? "视频预览"} src={currentSegment?.thumbnail ?? previewImages[0]} />
             )}
             {isPreparing ? (
               <div className="preview-loading">
@@ -2310,7 +2307,7 @@ const DemoView = ({
                   <p>{coverIntro}</p>
                 </div>
                 <div className="cover-art">
-                  <MockAssetImage alt="封面预览" src={coverImage} missingAlt="封面素材不可用" />
+                  <img alt="封面预览" src={coverImage} />
                 </div>
               </section>
             </main>
